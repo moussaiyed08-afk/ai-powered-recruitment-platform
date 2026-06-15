@@ -1,0 +1,66 @@
+// ============================================================
+//  FICHIER : prisma/schema.prisma
+//  C'est le "plan" de ta base de données.
+//  Prisma lit ce fichier pour savoir comment sont structurées
+//  tes tables, et génère les outils JavaScript correspondants.
+// ============================================================
+
+// Configuration de Prisma
+generator client {
+  // On dit à Prisma de générer un client JavaScript
+  provider = "prisma-client-js"
+}
+
+// Configuration de la connexion à la base de données
+datasource db {
+  // On utilise PostgreSQL comme moteur de base de données
+  provider = "postgresql"
+
+  // L'URL de connexion est lue depuis le fichier .env
+  // Format : postgresql://USER:PASSWORD@HOST:PORT/DATABASE_NAME
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+//  MODÈLE : Job
+//  Correspond à une TABLE dans PostgreSQL.
+//  Chaque champ correspond à une COLONNE de la table.
+// ============================================================
+model Job {
+  // id : identifiant unique de chaque offre
+  // @id          => c'est la clé primaire (Primary Key)
+  // @default(autoincrement()) => PostgreSQL génère l'ID automatiquement (1, 2, 3...)
+  id          Int      @id @default(autoincrement())
+
+  // title : le titre du poste (ex: "Développeur React")
+  // String => texte, obligatoire (non-nullable par défaut)
+  title       String
+
+  // company : le nom de l'entreprise qui recrute
+  company     String
+
+  // description : le détail de l'offre
+  // @db.Text => stocké comme un texte long dans PostgreSQL (pas limité à 255 chars)
+  description String   @db.Text
+
+  // createdAt : date de création de l'offre, remplie automatiquement
+  // @default(now()) => PostgreSQL insère la date et heure actuelles automatiquement
+  createdAt   DateTime @default(now())
+
+}
+model User {
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
+  password   String
+  role       String   // "CANDIDAT" ou "RECRUTEUR"
+  
+  // Champs ajoutés
+  nom        String
+  prenom     String
+  
+  // Champs optionnels (selon le rôle)
+  entreprise String?  // Uniquement pour le RECRUTEUR
+  enChomage  Boolean? // Uniquement pour le CANDIDAT
+  
+  createdAt  DateTime @default(now())
+}

@@ -1,15 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import Login from './Login';
+import App from './App'; // On importe App.jsx, pas Login
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
 root.render(
   <React.StrictMode>
-    <Login onLoginSuccess={(user) => {
-      console.log('Logged in:', user);
-      // Replace with your routing logic, e.g.:
-      // window.location.href = user.role === 'RECRUTEUR' ? '/recruiter/dashboard' : '/candidate/dashboard';
-    }} />
+    <App />
   </React.StrictMode>
 );

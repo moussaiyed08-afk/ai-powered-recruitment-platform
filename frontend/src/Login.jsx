@@ -30,8 +30,12 @@ export default function Login({ onLoginSuccess }) {
         alert("Succès ! Vous pouvez vous connecter.");
         setIsRegister(false);
       } else {
+        // C'est ici que tu dois faire la modification :
         localStorage.setItem('token', data.token);
+        localStorage.setItem('role', data.user.role); // <-- AJOUTE CETTE LIGNE
+        
         onLoginSuccess(data.user);
+      
       }
     } catch (err) {
       setError(err.message);

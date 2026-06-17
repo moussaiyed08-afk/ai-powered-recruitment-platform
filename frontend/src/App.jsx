@@ -1,17 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // 1. Importe useEffect
 import Login from './Login';
 import DashboardCandidat from './components/DashboardCandidat';
 import DashboardRecruteur from './components/DashboardRecruteur';
 
 function App() {
-  const [user, setUser] = useState(null);
-  console.log("DashboardCandidat est :", DashboardCandidat);
-console.log("DashboardRecruteur est :", DashboardRecruteur);
+  // 2. Initialise l'état en regardant dans le localStorage
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  // 3. Sauvegarde dans le localStorage à chaque changement de user
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('user');
+    }
+  }, [user]);
 
   return (
     <div className="main-app">
       {user ? (
-        user.role === 'CANDIDAT' ? <DashboardCandidat /> : <DashboardRecruteur />
+        <div style={{ border: '5px solid red', padding: '20px' }}>
+          {user.role === 'CANDIDAT' ? <DashboardCandidat /> : <DashboardRecruteur />}
+          <button onClick={() => setUser(null)}>Déconnexion</button>
+        </div>
       ) : (
         <Login onLoginSuccess={setUser} />
       )}
@@ -19,5 +33,4 @@ console.log("DashboardRecruteur est :", DashboardRecruteur);
   );
 }
 
-// CETTE LIGNE EST OBLIGATOIRE ET DOIT ÊTRE À LA FIN DU FICHIER
 export default App;

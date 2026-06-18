@@ -14,7 +14,7 @@ export default function Login({ onLoginSuccess }) {
     setLoading(true);
     setError('');
     
-    const endpoint = isRegister ? 'http://localhost:3000/api/auth/register' : 'http://localhost:3000/api/auth/login';
+    const endpoint = isRegister ? 'http://localhost:5000/api/auth/register' : 'http://localhost:5000/api/auth/login';
     
     try {
       const res = await fetch(endpoint, {

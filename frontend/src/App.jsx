@@ -1,16 +1,16 @@
-import { useState, useEffect } from 'react'; // 1. Importe useEffect
+import { useState, useEffect } from 'react';
 import Login from './Login';
 import DashboardCandidat from './components/DashboardCandidat';
 import DashboardRecruteur from './components/DashboardRecruteur';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import JobDetails from './components/JobDetails';
 
 function App() {
-  // 2. Initialise l'état en regardant dans le localStorage
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  // 3. Sauvegarde dans le localStorage à chaque changement de user
   useEffect(() => {
     if (user) {
       localStorage.setItem('user', JSON.stringify(user));
@@ -20,16 +20,26 @@ function App() {
   }, [user]);
 
   return (
-    <div className="main-app">
-      {user ? (
-        <div style={{ border: '5px solid red', padding: '20px' }}>
-          {user.role === 'CANDIDAT' ? <DashboardCandidat /> : <DashboardRecruteur />}
-          <button onClick={() => setUser(null)}>Déconnexion</button>
-        </div>
-      ) : (
-        <Login onLoginSuccess={setUser} />
-      )}
-    </div>
+    <Router>
+      <div className="main-app">
+        {user ? (
+          <>
+            {/* Bouton de déconnexion global */}
+            <button onClick={() => setUser(null)}>Déconnexion</button>
+            
+            <Routes>
+              {/* Redirection selon le rôle */}
+              <Route path="/" element={user.role === 'CANDIDAT' ? <DashboardCandidat /> : <DashboardRecruteur />} />
+              <Route path="/job/:id" element={<JobDetails />} />
+              {/* Sécurité : redirection par défaut */}
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+          </>
+        ) : (
+          <Login onLoginSuccess={setUser} />
+        )}
+      </div>
+    </Router>
   );
 }
 

@@ -1,0 +1,82 @@
+.details-container {
+  max-width: 640px;
+  margin: 40px auto;
+  padding: 32px 36px;
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e0e0e0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.details-loading {
+  text-align: center;
+  margin-top: 60px;
+  color: #777;
+  font-size: 15px;
+}
+
+.btn-back {
+  background: none;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: #555;
+  cursor: pointer;
+  margin-bottom: 24px;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-back:hover {
+  background: #f5f5f5;
+  border-color: #b0b0b0;
+}
+
+.details-title {
+  margin: 0 0 6px;
+  font-size: 24px;
+  font-weight: 600;
+  color: #222;
+}
+
+.details-company {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #555;
+}
+
+.details-description {
+  margin-top: 20px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #444;
+}
+
+.btn-apply {
+  margin-top: 28px;
+  padding: 10px 22px;
+  background-color: #185fa5;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.btn-apply:hover {
+  background-color: #0c447c;
+}
+
+.btn-apply:active {
+  transform: scale(0.97);
+}
+
+@media (max-width: 600px) {
+  .details-container {
+    margin: 20px 16px;
+    padding: 24px 20px;
+  }
+}

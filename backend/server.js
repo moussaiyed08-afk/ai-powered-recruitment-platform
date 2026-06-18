@@ -79,5 +79,39 @@ app.post('/api/jobs', async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la création de l'offre" });
   }
 });
+app.get('/api/jobs/:id', async (req, res) => {
+  try {
+    const jobId = parseInt(req.params.id);
+    
+    // Si l'ID n'est pas un nombre valide
+    if (isNaN(jobId)) {
+      return res.status(400).json({ error: "ID invalide" });
+    }
 
+    const job = await prisma.job.findUnique({
+      where: { id: jobId }
+    });
+
+    // Si le job n'est pas trouvé, renvoie 404 proprement
+    if (!job) {
+      return res.status(404).json({ error: "Offre non trouvée" });
+    }
+
+    res.json(job);
+  } catch (error) {
+    res.status(500).json({ error: "Erreur serveur" });
+  }
+});
+app.put('/api/jobs/:id', async (req, res) => {
+  try {
+    const { title, company, description } = req.body;
+    const updatedJob = await prisma.job.update({
+      where: { id: parseInt(req.params.id) },
+      data: { title, company, description }
+    });
+    res.json(updatedJob);
+  } catch (error) {
+    res.status(500).json({ error: "Erreur de mise à jour" });
+  }
+});
 app.listen(PORT, () => console.log(`🚀 Serveur sur http://localhost:${PORT}`));

@@ -53,11 +53,29 @@
   color: #444;
 }
 
+/* --- Styles pour le score IA --- */
+.score-display {
+  margin: 20px 0;
+  padding: 15px;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  border-left: 5px solid;
+}
+
+.text-blue {
+  border-color: #007bff;
+  color: #004085;
+}
+
+.text-gray {
+  border-color: #6c757d;
+  color: #383d41;
+}
+
+/* --- Boutons d'application --- */
 .btn-apply {
   margin-top: 28px;
   padding: 10px 22px;
-  background-color: #185fa5;
-  color: white;
   border: none;
   border-radius: 6px;
   font-size: 14px;
@@ -66,8 +84,15 @@
   transition: background-color 0.2s, transform 0.1s;
 }
 
-.btn-apply:hover {
-  background-color: #0c447c;
+.btn-apply.blue { 
+  background-color: #007bff; 
+  color: white; 
+}
+
+.btn-apply.gray { 
+  background-color: #6c757d; 
+  color: white; 
+  cursor: not-allowed; 
 }
 
 .btn-apply:active {
@@ -79,4 +104,17 @@
     margin: 20px 16px;
     padding: 24px 20px;
   }
+}
+
+/* Liens globaux */
+a, 
+a:link, 
+a:visited, 
+a:hover, 
+a:active, 
+.job-card-link, 
+.action-link {
+  text-decoration: none !important;
+  color: #185fa5 !important;
+  border-bottom: none !important;
 }

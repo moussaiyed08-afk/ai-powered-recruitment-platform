@@ -113,3 +113,18 @@
     flex-wrap: wrap;
   }
 }
+/* Style pour supprimer le soulignement et forcer la couleur */
+.job-card-link {
+  text-decoration: none; /* Supprime le trait */
+  color: #185fa5;       /* Couleur personnalisée (bleu) */
+  font-weight: 600;     /* Rend le texte un peu plus épais */
+  display: inline-block;
+  margin-top: 10px;
+}
+
+/* Optionnel : effet de survol pour une meilleure expérience utilisateur */
+.job-card-link:hover {
+  text-decoration: none; /* Reste sans soulignement */
+  color: #0c447c;        /* Couleur plus foncée au survol */
+  cursor: pointer;
+}

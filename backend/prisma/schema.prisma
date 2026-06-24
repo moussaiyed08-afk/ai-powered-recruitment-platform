@@ -28,25 +28,23 @@ datasource db {
 // ============================================================
 model Job {
   // id : identifiant unique de chaque offre
-  // @id          => c'est la clé primaire (Primary Key)
-  // @default(autoincrement()) => PostgreSQL génère l'ID automatiquement (1, 2, 3...)
-  id          Int      @id @default(autoincrement())
+  id           Int           @id @default(autoincrement())
 
-  // title : le titre du poste (ex: "Développeur React")
-  // String => texte, obligatoire (non-nullable par défaut)
-  title       String
+  // title : le titre du poste
+  title        String
 
-  // company : le nom de l'entreprise qui recrute
-  company     String
+  // company : le nom de l'entreprise
+  company      String
 
   // description : le détail de l'offre
-  // @db.Text => stocké comme un texte long dans PostgreSQL (pas limité à 255 chars)
-  description String   @db.Text
+  // @db.Text est indispensable ici pour accepter des textes très longs
+  description  String        @db.Text
 
-  // createdAt : date de création de l'offre, remplie automatiquement
-  // @default(now()) => PostgreSQL insère la date et heure actuelles automatiquement
-  createdAt   DateTime @default(now())
+  // createdAt : date de création automatique
+  createdAt    DateTime      @default(now())
 
+  // RELATION : Un Job peut être lié à plusieurs Candidatures
+  candidatures Candidature[] 
 }
 model User {
   id         Int      @id @default(autoincrement())
@@ -63,4 +61,15 @@ model User {
   enChomage  Boolean? // Uniquement pour le CANDIDAT
   
   createdAt  DateTime @default(now())
+}
+model Candidature {
+  id        Int      @id @default(autoincrement())
+  fileName  String
+  cvContent String   @db.Text
+  score     Int?     // Champ ajouté pour stocker le pourcentage (0-100)
+  createdAt DateTime @default(now())
+  
+  // Relation avec le job
+  jobId     Int
+  job       Job      @relation(fields: [jobId], references: [id])
 }

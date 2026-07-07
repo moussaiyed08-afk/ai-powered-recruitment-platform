@@ -4,6 +4,8 @@ const cors = require('cors');
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { OpenAI } = require("openai"); 
+const nodemailer = require('nodemailer'); // <--- AJOUT
 
 const app = express();
 const prisma = new PrismaClient();
@@ -11,61 +13,63 @@ const prisma = new PrismaClient();
 const JWT_SECRET = "mon_secret_tres_securise";
 const PORT = process.env.PORT || 5000;
 
+// Configuration du transporteur Nodemailer
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER, // Mets ton email dans le fichier .env
+    pass: process.env.EMAIL_PASS  // Mets ton mot de passe d'application dans .env
+  }
+});
+
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// --- FONCTION CALCUL SCORE (VERSION FINALE) ---
+// --- FONCTION CALCUL SCORE ---
 async function calculateScore(jobDescription, cvContent) {
   try {
-    const prompt = `Tu es un expert en recrutement. Compare ce CV et cette offre.
-    Offre: ${jobDescription}
-    CV: ${cvContent}
-    Réponds EXCLUSIVEMENT avec un nombre entier entre 0 et 100. Ne mets aucun texte, aucune explication.`;
-
-    const response = await fetch("https://router.huggingface.co/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "meta-llama/Llama-3.2-1B-Instruct",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 10,
-        temperature: 0.1
-      })
+    const truncatedCv = cvContent.substring(0, 8000); 
+    const client = new OpenAI({
+      apiKey: process.env.GROQ_API_KEY,
+      baseURL: "https://api.groq.com/openai/v1"
     });
 
-    const data = await response.json();
+    const completion = await client.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: "system", content: "Tu es un expert en recrutement. Réponds EXCLUSIVEMENT avec un nombre entier entre 0 et 100." },
+        { role: "user", content: `Offre: ${jobDescription.substring(0, 2000)}\n\nCV: ${truncatedCv}\n\nDonne le score:` }
+      ],
+      temperature: 0.1,
+      max_tokens: 5
+    });
 
-    if (!response.ok) {
-      console.error("Erreur API finale :", JSON.stringify(data, null, 2));
-      return 50; // Valeur par défaut si l'API échoue
-    }
-
-    const text = data.choices[0].message.content;
-    const score = parseInt(text.replace(/[^0-9]/g, ''));
-    
+    const score = parseInt(completion.choices[0].message.content.replace(/[^0-9]/g, ''));
     return isNaN(score) ? 50 : score;
   } catch (err) {
-    console.error("Erreur fatale calculateScore :", err);
-    return 0;
+    console.error("Erreur Llama/Groq :", err);
+    return 50;
   }
 }
 
-// --- ROUTE DE CANDIDATURE AVEC IA ---
+// --- ROUTE DE CANDIDATURE AVEC IA + EMAIL ---
 app.post('/api/apply/:id', async (req, res) => {
     const { cvBase64, fileName } = req.body;
     const jobId = parseInt(req.params.id);
 
     try {
-        const job = await prisma.job.findUnique({ where: { id: jobId } });
+        // 1. Jointure pour récupérer l'email du recruteur
+        const job = await prisma.job.findUnique({ 
+            where: { id: jobId },
+            include: { recruiter: true } 
+        });
+        
         if (!job) return res.status(404).json({ error: "Job non trouvé" });
 
         const score = await calculateScore(job.description, cvBase64);
-        console.log(`Score final calculé pour ${fileName} : ${score}%`);
 
+        // 2. Enregistrement
         const nouvelleCandidature = await prisma.candidature.create({
             data: {
                 fileName: fileName,
@@ -75,62 +79,32 @@ app.post('/api/apply/:id', async (req, res) => {
             }
         });
         
+        // 3. Envoi de l'email au recruteur
+        if (job.recruiter && job.recruiter.email) {
+            const mailOptions = {
+              from: process.env.EMAIL_USER,
+              to: job.recruiter.email,
+              subject: `Nouvelle candidature pour : ${job.title}`,
+              text: `Bonjour, un candidat a postulé pour votre offre "${job.title}". Score de correspondance : ${score}%.\nFichier : ${fileName}`
+            };
+
+            transporter.sendMail(mailOptions, (error, info) => {
+              if (error) console.error("Erreur envoi email:", error);
+              else console.log("Email envoyé au recruteur :", job.recruiter.email);
+            });
+        }
+
         res.status(200).json({ 
             message: "Candidature traitée", 
             score: score,
             candidatureId: nouvelleCandidature.id 
         });
     } catch (error) {
-        console.error("Erreur d'enregistrement Prisma :", error);
+        console.error("Erreur traitement :", error);
         res.status(500).json({ error: "Erreur lors du traitement." });
     }
 });
 
-// --- ROUTES AUTHENTIFICATION ---
-app.post('/api/auth/register', async (req, res) => {
-  try {
-    const { email, password, role, nom, prenom, entreprise, enChomage } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await prisma.user.create({
-      data: { email, password: hashedPassword, role, nom, prenom, entreprise: role === 'RECRUTEUR' ? entreprise : null, enChomage: role === 'CANDIDAT' ? !!enChomage : false }
-    });
-    res.status(201).json({ message: "Utilisateur créé avec succès !" });
-  } catch (error) { res.status(500).json({ error: "Erreur inscription." }); }
-});
-
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user || !(await bcrypt.compare(password, user.password))) return res.status(401).json({ error: "Identifiants invalides." });
-    const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET);
-    res.json({ token, user: { email: user.email, role: user.role } });
-  } catch (error) { res.status(500).json({ error: "Erreur de connexion." }); }
-});
-
-// --- ROUTES JOBS ---
-app.get('/api/jobs', async (req, res) => {
-  try {
-    const jobs = await prisma.job.findMany({ orderBy: { createdAt: 'desc' } });
-    res.json(jobs); 
-  } catch (error) { res.status(500).json({ error: "Impossible de récupérer les jobs" }); }
-});
-
-app.post('/api/jobs', async (req, res) => {
-  try {
-    const { title, company, description } = req.body;
-    const newJob = await prisma.job.create({ data: { title, company, description } });
-    res.status(201).json(newJob);
-  } catch (error) { res.status(500).json({ error: "Erreur création offre" }); }
-});
-
-app.get('/api/jobs/:id', async (req, res) => {
-  try {
-    const jobId = parseInt(req.params.id);
-    const job = await prisma.job.findUnique({ where: { id: jobId } });
-    if (!job) return res.status(404).json({ error: "Offre non trouvée" });
-    res.json(job);
-  } catch (error) { res.status(500).json({ error: "Erreur serveur" }); }
-});
+// ... (Garde tes autres routes Auth et Jobs intactes) ...
 
 app.listen(PORT, () => console.log(`🚀 Serveur sur http://localhost:${PORT}`));

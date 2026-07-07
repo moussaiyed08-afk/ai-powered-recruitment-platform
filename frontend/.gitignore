@@ -1,3 +1,7 @@
+# Environnement (TRÈS IMPORTANT)
+.env
+.env.local
+.env.*.local
 # Logs
 logs
 *.log

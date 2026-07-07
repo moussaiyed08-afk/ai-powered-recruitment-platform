@@ -7,9 +7,10 @@ export default function JobDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
-  const [score, setScore] = useState(null); // État pour stocker le score IA
-  const [isAnalyzing, setIsAnalyzing] = useState(false); // État de chargement
-  const fileInputRef = useRef(null); // Référence pour l'input masqué
+  const [score, setScore] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isApplied, setIsApplied] = useState(false); // Nouvel état pour le succès
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetch(`http://localhost:5000/api/jobs/${id}`)
@@ -18,17 +19,14 @@ export default function JobDetails() {
       .catch((err) => console.error("Erreur:", err));
   }, [id]);
 
-  // Gère le clic sur le bouton d'action
   const handleApplyClick = () => {
-    // Si on a déjà un score >= 70, on déclenche l'envoi final
     if (score >= 70) {
-      alert("Candidature finale envoyée avec succès !");
+      setIsApplied(true); // On passe en mode "Envoyé"
     } else {
       fileInputRef.current.click();
     }
   };
 
-  // Gère l'envoi après sélection du fichier
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -40,15 +38,10 @@ export default function JobDetails() {
       const payload = { cvBase64: reader.result, fileName: file.name };
 
       try {
-        // Envoi au backend pour analyse IA + enregistrement
         const res = await axios.post(`http://localhost:5000/api/apply/${id}`, payload);
-        
-        // --- MISE À JOUR DU SCORE ---
         setScore(res.data.score); 
-        alert(`Analyse terminée ! Score : ${res.data.score}%`);
       } catch (err) {
-        console.error("Erreur :", err.message);
-        alert("Erreur lors de l'analyse.");
+        console.error("Erreur lors de l'analyse :", err.message);
       } finally {
         setIsAnalyzing(false);
       }
@@ -65,18 +58,13 @@ export default function JobDetails() {
       <h3 className="details-company">{job.company}</h3>
       <p className="details-description">{job.description}</p>
 
-      {/* Affichage du score s'il est disponible */}
       {score !== null && (
         <div className={`score-display ${score >= 70 ? 'text-blue' : 'text-gray'}`}>
           <h3>Score de correspondance : {score}%</h3>
-          {score >= 70 ? 
-            <p>✅ Excellent profil ! Vous pouvez postuler.</p> : 
-            <p>⚠️ Profil un peu juste pour ce poste.</p>
-          }
+          {score >= 70 ? <p>✅ Excellent profil ! Vous pouvez postuler.</p> : <p>⚠️ Profil un peu juste.</p>}
         </div>
       )}
 
-      {/* Input invisible pour déclencher le sélecteur système */}
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -86,12 +74,19 @@ export default function JobDetails() {
       />
 
       <button 
-        className={`btn-apply ${score !== null && score < 70 ? 'gray' : 'blue'}`}
+        className={`btn-apply ${isAnalyzing ? 'loading' : ''} ${isApplied ? 'success' : ''} ${score !== null && score < 70 ? 'gray' : 'blue'}`}
         onClick={handleApplyClick}
-        disabled={isAnalyzing || (score !== null && score < 70)}
+        disabled={isAnalyzing || isApplied || (score !== null && score < 70)}
       >
-        {isAnalyzing ? "Analyse en cours..." : 
-         score !== null ? `Postuler (${score}%)` : "Analyser mon CV"}
+        {isApplied ? (
+          "✅ Candidature envoyée !" 
+        ) : isAnalyzing ? (
+          <>
+            <span className="spinner-icon"></span> Analyse en cours...
+          </>
+        ) : (
+          score !== null ? `Postuler (${score}%)` : "Analyser mon CV"
+        )}
       </button>
     </div>
   );

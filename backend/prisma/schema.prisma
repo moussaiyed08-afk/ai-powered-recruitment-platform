@@ -1,72 +1,58 @@
 // ============================================================
-//  FICHIER : prisma/schema.prisma
-//  C'est le "plan" de ta base de données.
-//  Prisma lit ce fichier pour savoir comment sont structurées
-//  tes tables, et génère les outils JavaScript correspondants.
+// FICHIER : prisma/schema.prisma
 // ============================================================
 
-// Configuration de Prisma
 generator client {
-  // On dit à Prisma de générer un client JavaScript
   provider = "prisma-client-js"
 }
 
-// Configuration de la connexion à la base de données
 datasource db {
-  // On utilise PostgreSQL comme moteur de base de données
   provider = "postgresql"
-
-  // L'URL de connexion est lue depuis le fichier .env
-  // Format : postgresql://USER:PASSWORD@HOST:PORT/DATABASE_NAME
   url      = env("DATABASE_URL")
 }
 
 // ============================================================
-//  MODÈLE : Job
-//  Correspond à une TABLE dans PostgreSQL.
-//  Chaque champ correspond à une COLONNE de la table.
+// MODÈLES
 // ============================================================
+
 model Job {
-  // id : identifiant unique de chaque offre
-  id           Int           @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
+  title       String
+  company     String
+  description String   @db.Text
+  createdAt   DateTime @default(now())
 
-  // title : le titre du poste
-  title        String
-
-  // company : le nom de l'entreprise
-  company      String
-
-  // description : le détail de l'offre
-  // @db.Text est indispensable ici pour accepter des textes très longs
-  description  String        @db.Text
-
-  // createdAt : date de création automatique
-  createdAt    DateTime      @default(now())
+  // RELATION : Le job appartient à un recruteur (User)
+  recruiterId Int
+  recruiter   User     @relation(fields: [recruiterId], references: [id])
 
   // RELATION : Un Job peut être lié à plusieurs Candidatures
-  candidatures Candidature[] 
+  candidatures Candidature[]
 }
+
 model User {
   id         Int      @id @default(autoincrement())
   email      String   @unique
   password   String
   role       String   // "CANDIDAT" ou "RECRUTEUR"
   
-  // Champs ajoutés
   nom        String
   prenom     String
   
-  // Champs optionnels (selon le rôle)
   entreprise String?  // Uniquement pour le RECRUTEUR
   enChomage  Boolean? // Uniquement pour le CANDIDAT
   
   createdAt  DateTime @default(now())
+
+  // RELATION : Un utilisateur (recruteur) peut avoir créé plusieurs jobs
+  jobs       Job[]
 }
+
 model Candidature {
   id        Int      @id @default(autoincrement())
   fileName  String
   cvContent String   @db.Text
-  score     Int?     // Champ ajouté pour stocker le pourcentage (0-100)
+  score     Int?     
   createdAt DateTime @default(now())
   
   // Relation avec le job

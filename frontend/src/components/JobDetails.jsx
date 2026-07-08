@@ -9,19 +9,37 @@ export default function JobDetails() {
   const [job, setJob] = useState(null);
   const [score, setScore] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isApplied, setIsApplied] = useState(false); // Nouvel état pour le succès
+  const [isApplied, setIsApplied] = useState(false);
+  const [loading, setLoading] = useState(true); // État de chargement
+  const [error, setError] = useState(null); // État pour gérer les erreurs
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/jobs/${id}`)
-      .then((res) => res.json())
-      .then((data) => setJob(data))
-      .catch((err) => console.error("Erreur:", err));
+    const fetchJob = async () => {
+        try {
+            setLoading(true);
+            const response = await fetch(`http://localhost:5000/api/jobs/${id}`);
+            
+            if (!response.ok) {
+                throw new Error(`Erreur ${response.status}: L'offre n'existe pas.`);
+            }
+
+            const data = await response.json();
+            setJob(data);
+            setError(null);
+        } catch (error) {
+            console.error("Erreur chargement :", error);
+            setError("Impossible de charger l'offre.");
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchJob();
   }, [id]);
 
   const handleApplyClick = () => {
     if (score >= 70) {
-      setIsApplied(true); // On passe en mode "Envoyé"
+      setIsApplied(true);
     } else {
       fileInputRef.current.click();
     }
@@ -49,7 +67,10 @@ export default function JobDetails() {
     reader.readAsDataURL(file);
   };
 
-  if (!job) return <p className="details-loading">Chargement des détails...</p>;
+  // Affichage conditionnel selon le statut
+  if (loading) return <p className="details-loading">Chargement des détails...</p>;
+  if (error) return <p className="details-error" style={{color: 'red'}}>❌ {error}</p>;
+  if (!job) return <p>Aucune offre trouvée.</p>;
 
   return (
     <div className="details-container">

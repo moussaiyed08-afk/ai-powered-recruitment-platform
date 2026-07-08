@@ -5,7 +5,7 @@ const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { OpenAI } = require("openai"); 
-const nodemailer = require('nodemailer'); // <--- AJOUT
+const nodemailer = require('nodemailer');
 
 const app = express();
 const prisma = new PrismaClient();
@@ -17,8 +17,8 @@ const PORT = process.env.PORT || 5000;
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
-    user: process.env.EMAIL_USER, // Mets ton email dans le fichier .env
-    pass: process.env.EMAIL_PASS  // Mets ton mot de passe d'application dans .env
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
 });
 
@@ -26,40 +26,74 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// --- FONCTION CALCUL SCORE ---
-async function calculateScore(jobDescription, cvContent) {
-  try {
-    const truncatedCv = cvContent.substring(0, 8000); 
-    const client = new OpenAI({
-      apiKey: process.env.GROQ_API_KEY,
-      baseURL: "https://api.groq.com/openai/v1"
-    });
+// --- ROUTES AUTHENTIFICATION ---
+app.post('/api/auth/register', async (req, res) => {
+    const { nom, prenom, email, password, role, entreprise, enChomage } = req.body;
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const user = await prisma.user.create({
+            data: { nom, prenom, email, password: hashedPassword, role, entreprise, enChomage }
+        });
+        res.status(201).json({ message: "Utilisateur créé avec succès" });
+    } catch (error) {
+        console.error("Erreur inscription :", error);
+        res.status(400).json({ error: "Erreur lors de l'inscription" });
+    }
+});
 
-    const completion = await client.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        { role: "system", content: "Tu es un expert en recrutement. Réponds EXCLUSIVEMENT avec un nombre entier entre 0 et 100." },
-        { role: "user", content: `Offre: ${jobDescription.substring(0, 2000)}\n\nCV: ${truncatedCv}\n\nDonne le score:` }
-      ],
-      temperature: 0.1,
-      max_tokens: 5
-    });
+app.post('/api/auth/login', async (req, res) => {
+    const { email, password } = req.body;
+    try {
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user || !(await bcrypt.compare(password, user.password))) {
+            return res.status(401).json({ error: "Email ou mot de passe incorrect" });
+        }
+        const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+        res.json({ token, user: { id: user.id, email: user.email, role: user.role } });
+    } catch (error) {
+        res.status(500).json({ error: "Erreur serveur lors de la connexion" });
+    }
+});
 
-    const score = parseInt(completion.choices[0].message.content.replace(/[^0-9]/g, ''));
-    return isNaN(score) ? 50 : score;
-  } catch (err) {
-    console.error("Erreur Llama/Groq :", err);
-    return 50;
-  }
-}
+// --- ROUTE POUR RÉCUPÉRER TOUTES LES OFFRES ---
+app.get('/api/jobs', async (req, res) => {
+    try {
+        const jobs = await prisma.job.findMany({ include: { recruiter: true } });
+        res.json(jobs);
+    } catch (error) {
+        res.status(500).json({ error: "Impossible de récupérer les offres" });
+    }
+});
 
-// --- ROUTE DE CANDIDATURE AVEC IA + EMAIL ---
+// --- ROUTE POUR RÉCUPÉRER UNE SEULE OFFRE (AVEC LOGS) ---
+app.get('/api/jobs/:id', async (req, res) => {
+    const { id } = req.params;
+    console.log("Recherche de l'offre avec l'ID reçu :", id); 
+    
+    try {
+        const job = await prisma.job.findUnique({
+            where: { id: parseInt(id) },
+            include: { recruiter: true }
+        });
+        
+        if (!job) {
+            console.log("Offre non trouvée en base pour l'ID :", id);
+            return res.status(404).json({ error: "Offre non trouvée" });
+        }
+        
+        res.json(job);
+    } catch (error) {
+        console.error("Erreur serveur :", error);
+        res.status(500).json({ error: "Erreur serveur" });
+    }
+});
+
+// --- ROUTE DE CANDIDATURE AVEC IA + EMAIL (SIMPLE) ---
 app.post('/api/apply/:id', async (req, res) => {
     const { cvBase64, fileName } = req.body;
     const jobId = parseInt(req.params.id);
 
     try {
-        // 1. Jointure pour récupérer l'email du recruteur
         const job = await prisma.job.findUnique({ 
             where: { id: jobId },
             include: { recruiter: true } 
@@ -69,42 +103,49 @@ app.post('/api/apply/:id', async (req, res) => {
 
         const score = await calculateScore(job.description, cvBase64);
 
-        // 2. Enregistrement
         const nouvelleCandidature = await prisma.candidature.create({
-            data: {
-                fileName: fileName,
-                cvContent: cvBase64,
-                jobId: jobId,
-                score: score 
-            }
+            data: { fileName, cvContent: cvBase64, jobId, score }
         });
         
-        // 3. Envoi de l'email au recruteur
-        if (job.recruiter && job.recruiter.email) {
-            const mailOptions = {
-              from: process.env.EMAIL_USER,
-              to: job.recruiter.email,
-              subject: `Nouvelle candidature pour : ${job.title}`,
-              text: `Bonjour, un candidat a postulé pour votre offre "${job.title}". Score de correspondance : ${score}%.\nFichier : ${fileName}`
-            };
-
-            transporter.sendMail(mailOptions, (error, info) => {
-              if (error) console.error("Erreur envoi email:", error);
-              else console.log("Email envoyé au recruteur :", job.recruiter.email);
-            });
+        if (job.recruiter?.email) {
+            try {
+                await transporter.sendMail({
+                    from: process.env.EMAIL_USER,
+                    to: job.recruiter.email,
+                    subject: `Nouvelle candidature pour : ${job.title}`,
+                    text: `Bonjour, un candidat a postulé pour votre offre "${job.title}".\n\nScore de correspondance : ${score}%.\nFichier : ${fileName}`
+                });
+                console.log("✅ Email envoyé avec succès !");
+            } catch (mailError) {
+                console.error("❌ ERREUR LORS DE L'ENVOI DU MAIL :", mailError);
+            }
         }
 
-        res.status(200).json({ 
-            message: "Candidature traitée", 
-            score: score,
-            candidatureId: nouvelleCandidature.id 
-        });
+        res.status(200).json({ message: "Candidature traitée", score, candidatureId: nouvelleCandidature.id });
     } catch (error) {
         console.error("Erreur traitement :", error);
         res.status(500).json({ error: "Erreur lors du traitement." });
     }
 });
 
-// ... (Garde tes autres routes Auth et Jobs intactes) ...
+// --- FONCTION CALCUL SCORE ---
+async function calculateScore(jobDescription, cvContent) {
+    try {
+        const client = new OpenAI({ apiKey: process.env.GROQ_API_KEY, baseURL: "https://api.groq.com/openai/v1" });
+        const completion = await client.chat.completions.create({
+            model: "llama-3.3-70b-versatile",
+            messages: [
+                { role: "system", content: "Expert recruteur. Réponds uniquement avec un nombre entre 0 et 100." },
+                { role: "user", content: `Offre: ${jobDescription.substring(0, 2000)}\n\nCV: ${cvContent.substring(0, 8000)}\n\nDonne le score:` }
+            ],
+            temperature: 0.1,
+            max_tokens: 5
+        });
+        const score = parseInt(completion.choices[0].message.content.replace(/[^0-9]/g, ''));
+        return isNaN(score) ? 50 : score;
+    } catch (err) {
+        return 50;
+    }
+}
 
-app.listen(PORT, () => console.log(`🚀 Serveur sur http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`));

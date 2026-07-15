@@ -1,53 +1,301 @@
-/* Styling global pour centrer le formulaire */
-.auth-container {
+.auth-page {
   display: flex;
-  justify-content: center;
-  align-items: center;
   min-height: 100vh;
-  background-color: #f4f7f6;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: #ffffff;
+}
+
+/* ---------- Panneau illustratif (gauche) ---------- */
+.auth-illustration {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  background: linear-gradient(160deg, #eaf1fb 0%, #f3eefc 100%);
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  padding: 48px;
+}
+
+.shape {
+  position: absolute;
+  border-radius: 22px;
+  filter: blur(0.2px);
+}
+
+.shape-1 {
+  width: 150px;
+  height: 130px;
+  top: 8%;
+  left: -40px;
+  background: linear-gradient(135deg, #185fa5, #1a1a2e);
+  transform: rotate(-18deg);
+}
+
+.shape-2 {
+  width: 150px;
+  height: 130px;
+  top: 12%;
+  right: 12%;
+  background: linear-gradient(135deg, #3fbf8f, #185fa5);
+  transform: rotate(10deg);
+}
+
+.shape-3 {
+  width: 170px;
+  height: 150px;
+  top: 42%;
+  left: 8%;
+  background: linear-gradient(135deg, #6a4fd1, #b3487a);
+  transform: rotate(-14deg);
+}
+
+.shape-4 {
+  width: 150px;
+  height: 130px;
+  top: 55%;
+  right: 15%;
+  background: linear-gradient(135deg, #6a4fd1, #185fa5);
+  transform: rotate(16deg);
+}
+
+.badge-bubble {
+  position: absolute;
+  top: 24%;
+  left: 14%;
+  background: #ffffff;
+  border-radius: 50%;
+  width: 96px;
+  height: 96px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+}
+
+.badge-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1a1a1a;
+}
+
+.badge-label {
+  font-size: 10px;
+  color: #7a7a7a;
+  line-height: 1.2;
+  padding: 0 6px;
+}
+
+.illustration-text {
+  position: relative;
+  z-index: 1;
+}
+
+.brand-title {
+  font-size: 40px;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0 0 12px;
+}
+
+.illustration-tagline {
+  font-size: 15px;
+  color: #55575c;
+  max-width: 320px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ---------- Panneau formulaire (droite) ---------- */
+.auth-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
 }
 
 .auth-form {
-  background: white;
-  padding: 2.5rem;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
   width: 100%;
   max-width: 400px;
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 14px;
 }
 
-h2 { text-align: center; color: #333; margin-bottom: 10px; }
-
-input, select {
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 16px;
+.auth-form h2 {
+  font-size: 28px;
+  font-weight: 800;
+  color: #1a1a1a;
+  margin: 0 0 2px;
+  text-align: left;
 }
 
-button {
-  padding: 12px;
-  background-color: #007bff;
-  color: white;
+.auth-subtitle {
+  margin: 0 0 10px;
+  color: #8a8a8a;
+  font-size: 14px;
+}
+
+.input-row {
+  display: flex;
+  gap: 10px;
+}
+
+.input-row input {
+  flex: 1;
+}
+
+input,
+select {
+  padding: 13px 18px;
   border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background 0.3s;
+  border-radius: 999px;
+  background: #eceef1;
+  font-size: 14px;
+  color: #1a1a1a;
+  box-sizing: border-box;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
-button:hover { background-color: #0056b3; }
+input::placeholder {
+  color: #9a9a9a;
+}
 
-.error { color: #d9534f; text-align: center; font-size: 0.9rem; }
+input:focus,
+select:focus {
+  outline: none;
+  background: #ffffff;
+  box-shadow: 0 0 0 2px #185fa5;
+}
 
-p { 
-  text-align: center; 
-  cursor: pointer; 
-  color: #007bff; 
-  font-size: 0.9rem; 
-  text-decoration: underline; 
+select {
+  appearance: none;
+  cursor: pointer;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  margin: -2px 4px 0;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #55575c;
+  cursor: pointer;
+}
+
+.checkbox-label input {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border-radius: 4px;
+  accent-color: #185fa5;
+}
+
+.link-muted {
+  font-size: 13px;
+  color: #6a6a6a;
+  text-decoration: underline;
+}
+
+.btn-submit {
+  margin-top: 4px;
+  padding: 13px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #185fa5, #6a4fd1);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.btn-submit:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(24, 95, 165, 0.25);
+}
+
+.btn-submit:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 6px 0;
+  font-size: 12px;
+  color: #9a9a9a;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e3e3e3;
+}
+
+.btn-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px;
+  border: 1px solid #e3e3e3;
+  border-radius: 999px;
+  background: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.btn-google:hover {
+  background: #f6f7f9;
+  border-color: #d6d6d6;
+}
+
+.error {
+  color: #d9534f;
+  text-align: center;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.switch-mode {
+  text-align: center;
+  font-size: 13px;
+  color: #6a6a6a;
+  margin: 4px 0 0;
+}
+
+.link-strong {
+  color: #185fa5;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 860px) {
+  .auth-illustration {
+    display: none;
+  }
+  .auth-panel {
+    padding: 32px 20px;
+  }
 }

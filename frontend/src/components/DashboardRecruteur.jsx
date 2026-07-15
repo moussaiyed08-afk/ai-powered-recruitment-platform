@@ -1,119 +1,150 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import Layout, { StatCard } from '../components/Layout';
 import './DashboardRecruteur.css';
-import { getConnectedUser } from './authUtils'; 
 
-export default function DashboardRecruteur() {
-  // Debug : lecture immédiate du localStorage
-  const userId = localStorage.getItem('userId');
-  console.log("ID trouvé dans le stockage au chargement :", userId);
+const TABS = [
+  { key: 'all', label: 'Toutes les offres' },
+  { key: 'live', label: 'En ligne' },
+  { key: 'draft', label: 'Brouillons' },
+  { key: 'closed', label: 'Clôturées' },
+];
 
-  const [jobs, setJobs] = useState([]);
-  const [showForm, setShowForm] = useState(false);
-  const [newJob, setNewJob] = useState({ title: '', company: '', description: '' });
-  const navigate = useNavigate();
+const STATUS_LABEL = { live: 'En ligne', draft: 'Brouillon', closed: 'Clôturée' };
 
-  useEffect(() => {
-    // 1. Vérification de la session au chargement
-    const user = getConnectedUser();
-    if (!user) {
-      navigate('/login');
-      return;
-    }
-
-    // 2. Chargement des jobs
-    fetch('http://localhost:5000/api/jobs')
-      .then(res => res.json())
-      .then(data => setJobs(data));
-  }, [navigate]);
-
-  const handleAddJob = async (e) => {
-    e.preventDefault();
-    
-    // Récupération sécurisée
-    const recruiterId = localStorage.getItem('userId');
-    
-    if (!recruiterId || recruiterId === "null") {
-        alert("Session expirée. Veuillez vous reconnecter.");
-        navigate('/login');
-        return;
-    }
-
-    const res = await fetch('http://localhost:5000/api/jobs', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...newJob,
-        recruiterId: recruiterId 
-      })
-    });
-    
-    if (res.ok) {
-      const data = await res.json();
-      setJobs([data, ...jobs]); 
-      setShowForm(false);
-      setNewJob({ title: '', company: '', description: '' });
-      alert("Offre publiée !");
-    } else {
-      const errorData = await res.json();
-      alert("Erreur : " + (errorData.error || "Impossible d'ajouter l'offre"));
+export default function DashboardRecruteur({ jobs, setJobs, search, setSearch, activeTab, setActiveTab }) {
+  
+  // Fonction pour supprimer une offre
+  const handleDelete = async (jobId) => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette offre ?")) {
+      try {
+        const response = await fetch(`/api/jobs/${jobId}`, { method: 'DELETE' });
+        if (response.ok) {
+          // Met à jour la liste localement pour rafraîchir l'interface
+          setJobs(prevJobs => prevJobs.filter(job => job.id !== jobId));
+        } else {
+          alert("Erreur lors de la suppression");
+        }
+      } catch (error) {
+        console.error("Erreur serveur :", error);
+      }
     }
   };
 
+  // Stats calculées dynamiquement depuis les props
+  const stats = useMemo(() => {
+    const live = jobs.filter((j) => (j.status || 'live') === 'live').length;
+    const draft = jobs.filter((j) => j.status === 'draft').length;
+    const closed = jobs.filter((j) => j.status === 'closed').length;
+    return { total: jobs.length, live, draft, closed };
+  }, [jobs]);
+
+  const visibleJobs = useMemo(() => {
+    let list = jobs;
+    if (activeTab !== 'all') {
+      list = list.filter((j) => (j.status || 'live') === activeTab);
+    }
+    const q = search.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (j) => j.title.toLowerCase().includes(q) || j.company?.toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [jobs, activeTab, search]);
+
   return (
-    <div className="dashboard-container">
-      <div className="dashboard-header">
-        <h2 className="dashboard-title">Tableau de bord recruteur</h2>
-        <button className="btn-toggle-form" onClick={() => setShowForm(!showForm)}>
-          {showForm ? "Annuler" : "+ Ajouter une offre"}
-        </button>
+    <Layout
+      role="recruteur"
+      activeKey="jobs"
+      userName="Vous"
+      userRole="Recruteur"
+      searchValue={search}
+      onSearchChange={setSearch}
+      searchPlaceholder="Rechercher un poste, une catégorie..."
+    >
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Job board</h1>
+          <p className="page-subtitle">Créez une nouvelle offre ou modifiez vos offres existantes</p>
+        </div>
+        <Link to="/create-job" className="btn-primary">+ Nouvelle offre</Link>
       </div>
 
-      {showForm && (
-        <form onSubmit={handleAddJob} className="job-form">
-          <input
-            type="text"
-            placeholder="Titre"
-            value={newJob.title}
-            onChange={e => setNewJob({ ...newJob, title: e.target.value })}
-            required
-          />
-          <input
-            type="text"
-            placeholder="Entreprise"
-            value={newJob.company}
-            onChange={e => setNewJob({ ...newJob, company: e.target.value })}
-            required
-          />
-          <textarea
-            placeholder="Description"
-            value={newJob.description}
-            onChange={e => setNewJob({ ...newJob, description: e.target.value })}
-            required
-          />
-          <button type="submit" className="btn-submit-job">Publier l'offre</button>
-        </form>
-      )}
+      <div className="stats-row">
+        <StatCard value={stats.total} label="Offres créées" accent="#185fa5" />
+        <StatCard value={stats.live} label="Offres en ligne" accent="#ee4d4d" />
+        <StatCard value={stats.draft} label="Offres en attente" accent="#e0a13a" />
+        <StatCard value={stats.closed} label="Offres clôturées" accent="#3fa876" />
+      </div>
 
-      <div className="offres-list">
-        {jobs.map((job) => {
-          const isNew = (new Date() - new Date(job.createdAt)) < (24 * 60 * 60 * 1000);
-          return (
-            <div key={job.id} className="job-card">
-              <div className="job-card-header">
+      <div className="tabs-row">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            className={`tab-btn${activeTab === tab.key ? ' tab-btn-active' : ''}`}
+            onClick={() => setActiveTab(tab.key)}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="list-meta">
+        <span>{visibleJobs.length} offre{visibleJobs.length > 1 ? 's' : ''}</span>
+      </div>
+
+      {visibleJobs.length === 0 ? (
+        <div className="state-panel">Aucune offre ne correspond à ces critères.</div>
+      ) : (
+        <div className="jobs-grid">
+          {visibleJobs.map((job) => {
+            const jobStatus = job.status || 'live';
+            return (
+              <div key={job.id} className="job-card">
+                <div className="job-card-top">
+                  <span className="job-card-icon" aria-hidden="true">
+                    <svg viewBox="0 0 20 20" fill="none">
+                      <rect x="3" y="3" width="14" height="14" rx="4" fill="#185fa5" />
+                      <path d="M7 10h6M7 13h4" stroke="#fff" strokeWidth="1.4" strokeLinecap="round" />
+                    </svg>
+                  </span>
+                  <span className={`job-status job-status-${jobStatus}`}>
+                    <span className="status-dot" /> {STATUS_LABEL[jobStatus]}
+                  </span>
+                </div>
+
                 <h3 className="job-card-title">{job.title}</h3>
-                {isNew && <span className="job-card-badge">New</span>}
-              </div>
-              <p className="job-card-company">{job.company}</p>
+                <p className="job-card-desc">{job.description}</p>
 
-              <div className="actions">
-                <Link className="action-link" to={`/job/${job.id}`}>Voir détail</Link>
-                <Link className="action-link action-link-edit" to={`/edit-job/${job.id}`}>Modifier</Link>
+                <div className="job-card-tags">
+                  {job.type && <span className="tag">{job.type}</span>}
+                  {job.contract && <span className="tag">{job.contract}</span>}
+                  {job.location && <span className="tag">{job.location}</span>}
+                </div>
+
+                <div className="job-card-applicants">
+                  {job.applicantsCount ?? 0} candidature{(job.applicantsCount ?? 0) > 1 ? 's' : ''}
+                </div>
+
+                <div className="job-card-actions">
+                  <Link to={`/job/${job.id}/candidatures`}>Voir candidatures</Link>
+                  <span className="divider" />
+                  <Link to={`/edit-job/${job.id}`}>Modifier</Link>
+                  <span className="divider" />
+                  <button 
+                    className="btn-delete" 
+                    onClick={() => handleDelete(job.id)}
+                    style={{ color: 'red', background: 'none', border: 'none', cursor: 'pointer' }}
+                  >
+                    Supprimer
+                  </button>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+            );
+          })}
+        </div>
+      )}
+    </Layout>
   );
 }

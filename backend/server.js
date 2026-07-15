@@ -88,6 +88,56 @@ app.get('/api/jobs/:id', async (req, res) => {
     }
 });
 
+// --- ROUTE POUR MODIFIER UNE OFFRE ---
+app.put('/api/jobs/:id', async (req, res) => {
+    const { id } = req.params;
+    const { title, description, type, contract, location, status } = req.body;
+    
+    try {
+        const updatedJob = await prisma.job.update({
+            where: { id: parseInt(id) },
+            data: { 
+                title, 
+                description, 
+                type, 
+                contract, 
+                location, 
+                status 
+            }
+        });
+        
+        res.json({ message: "Offre mise à jour avec succès", updatedJob });
+    } catch (error) {
+        console.error("Erreur lors de la mise à jour :", error);
+        res.status(500).json({ error: "Erreur serveur lors de la mise à jour" });
+    }
+});
+
+// --- ROUTE POUR SUPPRIMER UNE OFFRE (TRANSACTION SÉCURISÉE) ---
+app.delete('/api/jobs/:id', async (req, res) => {
+    const { id } = req.params;
+    const jobId = parseInt(id);
+    
+    try {
+        // Utilisation d'une transaction pour garantir l'ordre des opérations
+        await prisma.$transaction([
+            // 1. On supprime toutes les candidatures liées au jobId
+            prisma.candidature.deleteMany({
+                where: { jobId: jobId }
+            }),
+            // 2. Ensuite, on supprime l'offre
+            prisma.job.delete({
+                where: { id: jobId }
+            })
+        ]);
+        
+        res.json({ message: "Offre et candidatures supprimées avec succès" });
+    } catch (error) {
+        console.error("Erreur critique lors de la suppression :", error);
+        res.status(500).json({ error: "Erreur lors de la suppression en base de données" });
+    }
+});
+
 // --- ROUTE DE CANDIDATURE AVEC IA + EMAIL (SIMPLE) ---
 app.post('/api/apply/:id', async (req, res) => {
     const { cvBase64, fileName } = req.body;
